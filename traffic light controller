@@ -1,0 +1,100 @@
+module traffic_light_controller ( 
+input clk, 
+input reset, 
+output reg [2:0] main_road,  // Main road traffic lights: Green, Yellow, Red 
+output reg [2:0] side_road   // Side road traffic lights: Green, Yellow, Red); 
+// State encoding 
+parameter MAIN_GREEN  = 2'b00; 
+parameter MAIN_YELLOW = 2'b01; 
+parameter SIDE_GREEN  = 2'b10; 
+parameter SIDE_YELLOW = 2'b11; 
+reg [1:0] state, next_state; 
+// Time counters 
+integer main_green_time = 10; 
+integer main_yellow_time = 3; 
+integer side_green_time = 10; 
+integer side_yellow_time = 3; 
+integer counter; 
+always @(posedge clk or posedge reset) begin 
+if (reset) begin 
+state <= MAIN_GREEN; 
+counter <= main_green_time; 
+end else begin 
+state <= next_state; 
+if (counter > 0) begin 
+counter <= counter - 1; 
+end else begin 
+case (state)     
+                    MAIN_GREEN: counter <= main_yellow_time; 
+                    MAIN_YELLOW: counter <= side_green_time; 
+                    SIDE_GREEN: counter <= side_yellow_time; 
+                    SIDE_YELLOW: counter <= main_green_time; 
+                endcase 
+            end 
+        end 
+    end 
+    always @(*) begin 
+        case (state) 
+            MAIN_GREEN: begin 
+                main_road = 3'b001;  // Green 
+                side_road = 3'b100;  // Red 
+                if (counter == 0) next_state = MAIN_YELLOW; 
+                else next_state = MAIN_GREEN; 
+            end 
+            MAIN_YELLOW: begin 
+                main_road = 3'b010;  // Yellow 
+                side_road = 3'b100;  // Red 
+                if (counter == 0) next_state = SIDE_GREEN; 
+                else next_state = MAIN_YELLOW; 
+            end 
+            SIDE_GREEN: begin 
+                main_road = 3'b100;  // Red 
+                side_road = 3'b001;  // Green 
+                if (counter == 0) next_state = SIDE_YELLOW; 
+                else next_state = SIDE_GREEN; 
+            end 
+            SIDE_YELLOW: begin 
+                main_road = 3'b100;  // Red 
+                side_road = 3'b010;  // Yellow 
+ 
+                                                                                                                                                
+                if (counter == 0) next_state = MAIN_GREEN; 
+                else next_state = SIDE_YELLOW; 
+            end 
+        endcase 
+    end 
+endmodule 
+ 
+Test Bench tb_traffic_light_controller.v: 
+module tb_traffic_light_controller; 
+    reg clk; 
+    reg reset; 
+    wire [2:0] main_road; 
+    wire [2:0] side_road; 
+    traffic_light_controller uut ( 
+        .clk(clk), 
+        .reset(reset), 
+        .main_road(main_road), 
+        .side_road(side_road) ); 
+    initial begin 
+        clk = 0; 
+        forever #5 clk = ~clk;  // Clock with period 10 
+    end 
+    initial begin 
+        reset = 1; 
+        #10 reset = 0; 
+        #200 $stop;  // Run simulation for 200 time units 
+    end 
+    initial begin 
+ 
+ 
+         
+ 
+        $monitor("Time=%0d Main Road=%b Side Road=%b", $time, main_road, side_road); 
+    end 
+    initial begin 
+        // Dump waveform data 
+        $dumpfile("dump.vcd"); 
+        $dumpvars(0, tb_traffic_light_controller); 
+    end 
+endmodule
